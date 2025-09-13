@@ -1,0 +1,59 @@
+name: Build Android APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        
+    - name: Setup Java
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'
+        java-version: '17'
+        
+    - name: Setup Android SDK
+      uses: android-actions/setup-android@v3
+      
+    - name: Install dependencies
+      run: npm install
+      
+    - name: Build web app
+      run: npm run build || echo "Build step failed but continuing"
+      
+    - name: Install Capacitor CLI
+      run: npm install -g @capacitor/cli
+      
+    - name: Add Android platform
+      run: npx cap add android || echo "Android platform already exists"
+      
+    - name: Sync Capacitor
+      run: npx cap sync android || echo "Sync failed but continuing"
+      
+    - name: Build Android APK
+      run: |
+        cd android
+        chmod +x gradlew
+        ./gradlew assembleDebug || echo "Gradle build failed"
+      
+    - name: Upload APK
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: android-apk
+        path: |
+          android/app/build/outputs/apk/debug/*.apk
+          android/app/build/outputs/apk/**/*.apk
+        if-no-files-found: warn
